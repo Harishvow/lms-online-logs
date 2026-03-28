@@ -16,11 +16,11 @@ import os
 import sys
 import json
 import time
-import pandas as pd
-import numpy as np
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
 from datetime import datetime
 from typing import Optional
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 
 # ─── Load .env file ──────────────────────────────────────────────────────────
 _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -29,11 +29,11 @@ load_dotenv(_env_path)
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
 
-from dataset_generator import generate_dataset
-from feature_engineering import engineer_features, get_student_summary
-from ml_models import run_ml_pipeline
-from alert_system import generate_alerts, get_alert_summary
-from teacher_student_mapping import (
+from dataset_generator import generate_dataset  # type: ignore
+from feature_engineering import engineer_features, get_student_summary  # type: ignore
+from ml_models import run_ml_pipeline  # type: ignore
+from alert_system import generate_alerts, get_alert_summary  # type: ignore
+from teacher_student_mapping import (  # type: ignore
     load_mapping,
     get_teacher_info,
     list_all_teachers,
@@ -355,7 +355,7 @@ def analyze_with_gemini(teacher_data: dict) -> Optional[str]:
     print(f"  {Colors.GREEN}🔑 Gemini API key detected!{Colors.END}")
     
     try:
-        import google.generativeai as genai
+        import google.generativeai as genai  # type: ignore
         genai.configure(api_key=api_key)
         
         model = genai.GenerativeModel(
@@ -526,21 +526,21 @@ def generate_local_analysis(teacher_data: dict) -> str:
     if stats["at_risk_count"] > 0:
         critical_ids = at_risk["student_id"].tolist()[:5]
         id_str = ", ".join([str(int(x)) for x in critical_ids])
-        actions.append(f"  {Colors.RED}🔴 IMMEDIATE{Colors.END}: Reach out to students [{id_str}] within 24 hours")
+        actions.append(f"  {Colors.RED}🔴 IMMEDIATE{Colors.END}: Reach out to students [{id_str}] within 24 hours")  # type: ignore
         actions.append(f"     — Schedule one-on-one meetings to understand their challenges")
     
     if stats["declining_count"] > 0:
         decline_ids = declining["student_id"].tolist()[:5]
         id_str = ", ".join([str(int(x)) for x in decline_ids])
-        actions.append(f"  {Colors.YELLOW}🟡 THIS WEEK{Colors.END}: Monitor students [{id_str}] showing decline")
+        actions.append(f"  {Colors.YELLOW}🟡 THIS WEEK{Colors.END}: Monitor students [{id_str}] showing decline")  # type: ignore
         actions.append(f"     — Set up weekly check-in reminders for these students")
     
-    moderate_risk = t_summary[t_summary.get("risk_label", pd.Series()) == "Moderate Risk"] if "risk_label" in t_summary.columns else pd.DataFrame()
+    moderate_risk = t_summary[t_summary.get("risk_label", pd.Series()) == "Moderate Risk"] if "risk_label" in t_summary.columns else pd.DataFrame()  # type: ignore
     if not moderate_risk.empty:
-        actions.append(f"  {Colors.CYAN}🔵 THIS MONTH{Colors.END}: Implement peer mentoring for {len(moderate_risk)} moderate-risk students")
+        actions.append(f"  {Colors.CYAN}🔵 THIS MONTH{Colors.END}: Implement peer mentoring for {len(moderate_risk)} moderate-risk students")  # type: ignore
         actions.append(f"     — Pair them with top performers for study groups")
     
-    actions.append(f"  {Colors.GREEN}💡 ONGOING{Colors.END}: Review video content for engagement optimization")
+    actions.append(f"  {Colors.GREEN}💡 ONGOING{Colors.END}: Review video content for engagement optimization")  # type: ignore
     actions.append(f"     — Consider breaking long videos into 10-15 min segments")
     actions.append(f"     — Add interactive quizzes within video content")
     

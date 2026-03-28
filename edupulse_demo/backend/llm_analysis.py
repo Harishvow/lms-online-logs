@@ -6,9 +6,9 @@ and generate human-readable insights with automatic fallback.
 
 import os
 import json
-import pandas as pd
+import pandas as pd  # type: ignore
 from typing import Optional
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 
 # ─── Load .env file ──────────────────────────────────────────────────────────
 # Look for .env in the project root (edupulse_demo/)
@@ -16,10 +16,8 @@ _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 load_dotenv(_env_path)
 
 # ─── Configuration ───────────────────────────────────────────────────────────
-# Set your Gemini API key in .env file or as environment variable
-# If no key is available, the system falls back to ML-based analysis
-
-GEMINI_MODEL = "gemini-2.0-flash"
+# Set your Ollama model in .env or use the default
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 MAX_TOKENS = 2000
 
 
@@ -77,54 +75,51 @@ Format your response clearly with headers and bullet points."""
 
 def analyze_with_llm(summary_df: pd.DataFrame) -> Optional[dict]:
     """
-    Attempt to analyze student data using Google Gemini.
+    Attempt to analyze student data using local Ollama.
     
     Returns:
         dict with 'success' (bool), 'analysis' (str), and 'source' (str)
         None if LLM is unavailable
     """
     try:
-        api_key = os.getenv("GEMINI_API_KEY", "")
+        import ollama  # type: ignore
         
-        if not api_key:
-            print("⚠️  No Gemini API key found. Attempting simulated LLM analysis...")
-            return _simulated_llm_analysis(summary_df)
-
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-
-        model = genai.GenerativeModel(
-            model_name=GEMINI_MODEL,
-            system_instruction="You are an expert educational data analyst specializing in student engagement and early warning systems.",
-        )
-
         dataset_summary = _build_dataset_summary(summary_df)
         prompt = _build_prompt(dataset_summary)
 
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                max_output_tokens=MAX_TOKENS,
-                temperature=0.7,
-            ),
+        # Build the system instruction for the chat
+        system_msg = "You are an expert educational data analyst specializing in student engagement and early warning systems."
+
+        response = ollama.chat(
+            model=OLLAMA_MODEL,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": prompt},
+            ],
+            options={
+                "num_predict": MAX_TOKENS,
+                "temperature": 0.7,
+            }
         )
 
-        analysis_text = response.text
+        analysis_text = response.get('message', {}).get('content', '')
 
         if analysis_text and len(analysis_text) > 100:
             return {
                 "success": True,
                 "analysis": analysis_text,
-                "source": f"Google Gemini ({GEMINI_MODEL})",
-                "model": GEMINI_MODEL,
+                "source": f"Ollama ({OLLAMA_MODEL})",
+                "model": OLLAMA_MODEL,
             }
         else:
-            print("⚠️  LLM returned insufficient response. Falling back.")
-            return None
+            print("⚠️  Ollama returned insufficient response. Falling back to simulated analysis.")
+            return _simulated_llm_analysis(summary_df)
 
     except Exception as e:
-        print(f"⚠️  LLM analysis failed: {e}")
-        return None
+        print(f"⚠️  Ollama analysis failed: {e}")
+        print(f"💡 Suggestion: Ensure Ollama is running ('ollama serve') and model '{OLLAMA_MODEL}' is pulled.")
+        print("⚠️  Attempting simulated LLM analysis as fallback...")
+        return _simulated_llm_analysis(summary_df)
 
 
 def _simulated_llm_analysis(summary_df: pd.DataFrame) -> dict:
@@ -237,8 +232,8 @@ def get_llm_or_fallback(summary_df: pd.DataFrame) -> dict:
 
 # ─── Standalone execution ────────────────────────────────────────────────────
 if __name__ == "__main__":
-    from dataset_generator import generate_dataset
-    from feature_engineering import engineer_features, get_student_summary
+    from dataset_generator import generate_dataset  # type: ignore
+    from feature_engineering import engineer_features, get_student_summary  # type: ignore
 
     df = generate_dataset()
     df = engineer_features(df)

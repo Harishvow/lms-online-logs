@@ -3,8 +3,8 @@ EduPulse – Feature Engineering Module
 Computes derived engagement metrics from raw student activity logs.
 """
 
-import pandas as pd
-import numpy as np
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
 
 
 def compute_engagement_score(df: pd.DataFrame) -> pd.Series:
@@ -45,7 +45,7 @@ def compute_engagement_trend(df: pd.DataFrame) -> pd.DataFrame:
             slope = np.polyfit(x, y, 1)[0]
         else:
             slope = 0.0
-        trends.append({"student_id": sid, "engagement_trend": round(slope, 3)})
+        trends.append({"student_id": sid, "engagement_trend": round(float(slope), 3)})  # type: ignore
     return pd.DataFrame(trends)
 
 

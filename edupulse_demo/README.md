@@ -180,19 +180,28 @@ Alerts are triggered when:
 - `engagement_trend < -1.5` (declining trend)
 - `cluster_label == "At Risk / Drop-off"` (clustering result)
 
-## 🤖 LLM Integration
+## 🤖 LLM Integration (Local Ollama)
 
-The system supports Google Gemini for analysis. Set your API key:
+The system now uses **Ollama** for local AI analysis. 
 
+### Setup Ollama:
+1. Install Ollama from [ollama.com](https://ollama.com)
+2. Pull the default model:
+   ```bash
+   ollama pull llama3.2
+   ```
+3. Ensure Ollama is running (`ollama serve`).
+
+### Configuration:
+You can specify a different model in your `.env` file:
 ```bash
-export GEMINI_API_KEY="your-api-key-here"
+OLLAMA_MODEL="mistral"
 ```
 
 **Fallback Logic:**
-- IF LLM response is valid → Use LLM explanation for insights
-- ELSE → Use Machine Learning models to perform analysis
-
-When no API key is available, the system uses a simulated AI analysis engine that generates meaningful insights based on actual dataset statistics.
+- IF Ollama is running and returns a valid response → Use local AI insights.
+- ELSE → Automatically fallback to the built-in simulated AI engine (which uses real dataset statistics).
+- IF AI analysis is disabled/fails → Use Machine Learning pipeline as a secondary fallback.
 
 ## 📈 Dataset Schema
 

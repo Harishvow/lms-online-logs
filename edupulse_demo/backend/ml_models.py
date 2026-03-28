@@ -4,13 +4,13 @@ K-Means Clustering and Random Forest Classification for
 student engagement behavioral analysis and risk prediction.
 """
 
-import numpy as np
-import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from sklearn.cluster import KMeans  # type: ignore
+from sklearn.ensemble import RandomForestClassifier  # type: ignore
+from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.metrics import classification_report, accuracy_score  # type: ignore
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -73,7 +73,7 @@ def run_kmeans_clustering(summary_df: pd.DataFrame, n_clusters: int = 3) -> pd.D
     cluster_means = {}
     for c in range(n_clusters):
         mask = raw_labels == c
-        cluster_means[c] = features.loc[mask, "avg_engagement_score"].mean() if mask.any() else 0
+        cluster_means[c] = features.loc[mask, "avg_engagement_score"].mean() if mask.any() else 0  # type: ignore
 
     sorted_clusters = sorted(cluster_means.keys(), key=lambda x: cluster_means[x], reverse=True)
     label_mapping = {old: new for new, old in enumerate(sorted_clusters)}
@@ -85,7 +85,7 @@ def run_kmeans_clustering(summary_df: pd.DataFrame, n_clusters: int = 3) -> pd.D
     # Print summary
     print(f"\n🔬 K-Means Clustering Results ({n_clusters} clusters):")
     for c in range(n_clusters):
-        count = (summary_df["cluster"] == c).sum()
+        count = (summary_df["cluster"] == c).sum()  # type: ignore
         avg = summary_df[summary_df["cluster"] == c]["avg_engagement_score"].mean()
         print(f"   {CLUSTER_LABELS[c]}: {count} students (avg score: {avg:.1f})")
 
@@ -173,7 +173,7 @@ def run_random_forest(summary_df: pd.DataFrame) -> pd.DataFrame:
     # Risk distribution
     print(f"\n   Risk Distribution:")
     for level, label in RISK_LABELS.items():
-        count = (summary_df["risk_level"] == level).sum()
+        count = (summary_df["risk_level"] == level).sum()  # type: ignore
         print(f"     {label}: {count} students")
 
     return summary_df, rf, importance
@@ -217,9 +217,9 @@ Students were grouped into 3 behavioral clusters:
 
 | Cluster | Students | Avg Score | Description |
 |---------|----------|-----------|-------------|
-| Highly Engaged | {(summary_df['cluster']==0).sum()} | {summary_df[summary_df['cluster']==0]['avg_engagement_score'].mean():.1f} | Consistent high activity |
-| Irregular | {(summary_df['cluster']==1).sum()} | {summary_df[summary_df['cluster']==1]['avg_engagement_score'].mean():.1f} | Inconsistent participation |
-| At Risk | {(summary_df['cluster']==2).sum()} | {summary_df[summary_df['cluster']==2]['avg_engagement_score'].mean():.1f} | Low or declining engagement |
+| Highly Engaged | {(summary_df['cluster']==0).sum()} | {summary_df[summary_df['cluster']==0]['avg_engagement_score'].mean():.1f} | Consistent high activity |  # type: ignore
+| Irregular | {(summary_df['cluster']==1).sum()} | {summary_df[summary_df['cluster']==1]['avg_engagement_score'].mean():.1f} | Inconsistent participation |  # type: ignore
+| At Risk | {(summary_df['cluster']==2).sum()} | {summary_df[summary_df['cluster']==2]['avg_engagement_score'].mean():.1f} | Low or declining engagement |  # type: ignore
 
 ### Risk Prediction (Random Forest)
 
@@ -245,8 +245,8 @@ Students were grouped into 3 behavioral clusters:
 
 # ─── Standalone execution ────────────────────────────────────────────────────
 if __name__ == "__main__":
-    from dataset_generator import generate_dataset
-    from feature_engineering import engineer_features, get_student_summary
+    from .dataset_generator import generate_dataset  # type: ignore
+    from .feature_engineering import engineer_features, get_student_summary  # type: ignore
 
     df = generate_dataset()
     df = engineer_features(df)

@@ -10,18 +10,19 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import streamlit as st  # type: ignore
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
 
-from backend.dataset_generator import generate_dataset
-from backend.feature_engineering import engineer_features, get_student_summary
-from backend.llm_analysis import get_llm_or_fallback
-from backend.ml_models import run_ml_pipeline
-from backend.alert_system import generate_alerts, format_alerts_for_display
+from backend.dataset_generator import generate_dataset  # type: ignore
+from backend.feature_engineering import engineer_features, get_student_summary  # type: ignore
+from backend.llm_analysis import get_llm_or_fallback  # type: ignore
+from backend.ml_models import run_ml_pipeline  # type: ignore
+from backend.alert_system import generate_alerts, format_alerts_for_display  # type: ignore
+from backend.teacher_student_mapping import load_mapping, get_teacher_info  # type: ignore
 
 # ─── Page Configuration ─────────────────────────────────────────────────────
 st.set_page_config(
@@ -30,6 +31,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ─── Login Session State ───────────────────────────────────────────────────
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "teacher_data" not in st.session_state:
+    st.session_state.teacher_data = None
 
 # ─── Custom CSS ──────────────────────────────────────────────────────────────
 st.markdown("""
@@ -137,24 +144,143 @@ st.markdown("""
         color: #e0e0e0;
     }
 
-    /* Hide Streamlit branding */
+    /* Hide Streamlit branding but keep the sidebar toggle */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
 
     /* Table styling */
     .dataframe {
         font-size: 0.85rem !important;
     }
+
+    /* Login Page Styling */
+    .login-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #16213e 100%);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .login-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 28px;
+        padding: 3.5rem 2.5rem;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+        text-align: center;
+        animation: fadeIn 0.8s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .login-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    .login-subtitle {
+        color: #888;
+        font-size: 0.95rem;
+        margin-bottom: 2.5rem;
+    }
+    .stTextInput > div > div > input {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
+        border-radius: 12px !important;
+        padding: 10px 15px !important;
+    }
+    .login-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 2rem !important;
+        font-weight: 700 !important;
+        width: 100% !important;
+        margin-top: 1.5rem !important;
+        border: none !important;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    /* Professional Alert Banner */
+    .pro-alert-banner {
+        background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+        padding: 1.5rem 2.5rem;
+        border-radius: 20px;
+        color: white;
+        margin-bottom: 2.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        box-shadow: 0 15px 35px rgba(255, 71, 87, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .pro-alert-icon { font-size: 2.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+    .pro-alert-title { font-weight: 800; font-size: 1.25rem; margin-bottom: 0.2rem; }
+    .pro-alert-desc { opacity: 0.9; font-size: 0.95rem; font-weight: 300; }
 </style>
 """, unsafe_allow_html=True)
 
 
+# ─── Login Logic ─────────────────────────────────────────────────────────────
+def show_login_page():
+    """Display a premium login portal for teachers."""
+    # Use empty space to center the login card
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        st.markdown("""
+            <div class="login-card">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">🎓</div>
+                <div class="login-title">EduPulse Login</div>
+                <div class="login-subtitle">Teacher Insights & Early Warning Portal</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Form resides outside the custom div but below it in the centered column
+        with st.form("login_form"):
+            st.markdown("##### 🔐 Secure Access")
+            teacher_id = st.text_input("Teacher ID", placeholder="e.g., TCH001").strip().upper()
+            submit = st.form_submit_button("Access Dashboard", width="stretch")
+            
+            if submit:
+                if not teacher_id:
+                    st.warning("Please enter your Teacher ID.")
+                else:
+                    mapping = load_mapping()
+                    teacher_info = get_teacher_info(teacher_id, mapping)
+                    if teacher_info:
+                        st.session_state.logged_in = True
+                        st.session_state.teacher_data = teacher_info
+                        st.success(f"Welcome back, {teacher_info['name']}!")
+                        st.rerun()
+                    else:
+                        st.error("Teacher ID not found. Use TCH001 to TCH010 for testing.")
+
+
+# Main Entry Control
+if not st.session_state.logged_in:
+    show_login_page()
+    st.stop()
+
+
+
 # ─── Data Loading & Caching ─────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
-def load_and_process_data():
-    """Generate dataset, engineer features, and run full analysis pipeline."""
-    # Step 1: Generate dataset
+def load_base_data():
+    """Load the base student data logs and initial summary metrics."""
+    # Step 1: Generate/Load dataset
     csv_path = os.path.join(BASE_DIR, "data", "student_activity_logs.csv")
     df = generate_dataset(csv_path)
 
@@ -162,36 +288,66 @@ def load_and_process_data():
     df = engineer_features(df)
     summary = get_student_summary(df)
 
-    # Step 3: LLM Analysis (with fallback)
-    llm_result = get_llm_or_fallback(summary)
-
-    # Step 4: ML Pipeline
+    # Step 3: Global ML Pipeline
     summary, model, importance, ml_report = run_ml_pipeline(summary)
 
-    # Step 5: Generate alerts
+    # Step 4: Generate early warning alerts
     alerts = generate_alerts(summary)
 
-    return df, summary, llm_result, ml_report, importance, alerts
+    return df, summary, ml_report, importance, alerts
+
+
+@st.cache_data(show_spinner="📡 Generating AI Teacher Insights...")
+def get_teacher_insights(teacher_summary_df: pd.DataFrame):
+    """Run AI analysis specifically for a teacher's students."""
+    return get_llm_or_fallback(teacher_summary_df)
 
 
 # ─── Load Data ───────────────────────────────────────────────────────────────
 with st.spinner("🚀 Initializing EduPulse AI Engine..."):
-    df, summary, llm_result, ml_report, importance, alerts = load_and_process_data()
+    df, summary, ml_report, importance, alerts = load_base_data()
+
+# ─── Teacher Data Scoping (Immediate) ────────────────────────────────────────
+# This ensures all components, including alerts, only show the teacher's students
+teacher_students = st.session_state.teacher_data["student_ids"]
+summary = summary[summary["student_id"].isin(teacher_students)]
+df = df[df["student_id"].isin(teacher_students)]
+alerts = alerts[alerts["student_id"].isin(teacher_students)]
 
 
-# ─── Header ──────────────────────────────────────────────────────────────────
-st.markdown("""
+st.markdown(f"""
 <div class="main-header">
-    <h1>🎓 EduPulse – AI Powered Student Engagement</h1>
-    <p>Early Warning System • Real-time Analytics • Intelligent Insights</p>
+    <h1>🎓 EduPulse – {st.session_state.teacher_data['name']}</h1>
+    <p>{st.session_state.teacher_data['subject']} • {st.session_state.teacher_data['department']}</p>
 </div>
 """, unsafe_allow_html=True)
+
+# ─── Alert Notifications ────────────────────────────────────────────────────
+critical_students = alerts[alerts["severity"] == "critical"]
+if len(critical_students) > 0:
+    st.markdown(f"""
+        <div class="pro-alert-banner">
+            <div class="pro-alert-icon">🚨</div>
+            <div class="pro-alert-content">
+                <div class="pro-alert-title">Critical Engagement Alert</div>
+                <div class="pro-alert-desc">
+                    System detected <b>{len(critical_students)} students</b> in your cohort with critically low activity 
+                    logs. Immediate pedagogical intervention is recommended.
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    # Floating toast for extra visibility
+    st.toast(f"🚨 {len(critical_students)} students need your attention!", icon="⚠️")
 
 
 # ─── Sidebar ─────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## ⚙️ Dashboard Controls")
+    st.markdown(f"## 👨‍🏫 Welcome, {st.session_state.teacher_data['name'].split(' ')[-1]}")
+    st.markdown(f"**ID:** `{st.session_state.teacher_data['teacher_id']}`")
+    st.markdown(f"**Dept:** {st.session_state.teacher_data['department']}")
     st.markdown("---")
+    st.markdown("## ⚙️ Dashboard Controls")
 
     # View selector
     view_mode = st.selectbox(
@@ -226,10 +382,15 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("### 📈 Quick Stats")
-    st.metric("Total Students", len(summary))
-    st.metric("Avg Engagement", f"{summary['avg_engagement_score'].mean():.1f}")
-    st.metric("Active Alerts", len(alerts))
+    st.markdown("### 📈 Class Stats")
+    st.metric("My Students", len(summary))
+    st.metric("Avg engagement", f"{summary['avg_engagement_score'].mean():.1f}")
+    st.metric("My Alerts", len(alerts))
+
+    if st.button("🚪 Logout", width="stretch"):
+        st.session_state.logged_in = False
+        st.session_state.teacher_data = None
+        st.rerun()
 
     st.markdown("---")
     st.markdown(
@@ -238,7 +399,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-# Apply filters
+# Apply sidebar filters on top of the already teacher-scoped data
 filtered = summary[
     (summary["risk_label"].isin(risk_filter)) &
     (summary["cluster_label"].isin(cluster_filter)) &
@@ -273,7 +434,7 @@ if view_mode == "Overview":
         """, unsafe_allow_html=True)
 
     with col3:
-        at_risk_count = (summary["risk_label"] == "High Risk").sum()
+        at_risk_count = (summary["risk_label"] == "High Risk").sum()  # type: ignore
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-value" style="background: linear-gradient(135deg, #ff4757, #ff6b81); -webkit-background-clip: text;">{at_risk_count}</div>
@@ -282,7 +443,7 @@ if view_mode == "Overview":
         """, unsafe_allow_html=True)
 
     with col4:
-        alert_count = len(alerts[alerts["severity"] == "critical"]) if not alerts.empty else 0
+        alert_count = len(alerts[alerts["severity"] == "critical"]) if not alerts.empty else 0  # type: ignore
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-value" style="background: linear-gradient(135deg, #ffa502, #ff6348); -webkit-background-clip: text;">{alert_count}</div>
@@ -315,10 +476,10 @@ if view_mode == "Overview":
             yaxis=dict(gridcolor="rgba(255,255,255,0.05)", title="Count"),
         )
         fig_hist.update_traces(
-            marker=dict(
-                line=dict(width=1, color="rgba(255,255,255,0.2)"),
-                opacity=0.85,
-            )
+            marker={
+                "line": {"width": 1, "color": "rgba(255,255,255,0.2)"},
+                "opacity": 0.85,
+            }
         )
         st.plotly_chart(fig_hist, use_container_width=True)
 
@@ -343,7 +504,7 @@ if view_mode == "Overview":
             paper_bgcolor="rgba(0,0,0,0)",
             height=350,
             margin=dict(t=20, b=20, l=20, r=20),
-            legend=dict(orientation="h", y=-0.1),
+            legend={"orientation": "h", "y": -0.1},
         )
         fig_pie.update_traces(
             textposition="inside",
@@ -379,17 +540,17 @@ if view_mode == "Overview":
         plot_bgcolor="rgba(0,0,0,0)",
         height=400,
         margin=dict(t=20, b=40, l=40, r=20),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.05)", dtick=1),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-        legend=dict(orientation="h", y=-0.15),
+        xaxis={"gridcolor": "rgba(255,255,255,0.05)", "dtick": 1},
+        yaxis={"gridcolor": "rgba(255,255,255,0.05)"},
+        legend={"orientation": "h", "y": -0.15},
     )
-    fig_trend.update_traces(line=dict(width=3))
+    fig_trend.update_traces(line={"width": 3})
     st.plotly_chart(fig_trend, use_container_width=True)
 
     # ─── Risk Alert Panel ────────────────────────────────────────────────
     st.markdown('<div class="section-header">🚨 Risk Alert Panel</div>', unsafe_allow_html=True)
 
-    if not alerts.empty:
+    if len(alerts) > 0:  # type: ignore
         display_alerts = format_alerts_for_display(alerts)
         for alert in display_alerts[:10]:
             css_class = "alert-critical" if alert["severity"] == "critical" else "alert-warning"
@@ -448,8 +609,8 @@ elif view_mode == "Student Explorer":
                 x=student_weekly["week_number"],
                 y=student_weekly["engagement_score"],
                 mode="lines+markers",
-                line=dict(color="#667eea", width=3),
-                marker=dict(size=8),
+                line={"color": "#667eea", "width": 3},
+                marker={"size": 8},
                 name="Engagement Score",
                 fill="tozeroy",
                 fillcolor="rgba(102,126,234,0.1)",
@@ -460,8 +621,8 @@ elif view_mode == "Student Explorer":
                 plot_bgcolor="rgba(0,0,0,0)",
                 height=300,
                 margin=dict(t=10, b=30, l=40, r=20),
-                xaxis=dict(title="Week", gridcolor="rgba(255,255,255,0.05)", dtick=1),
-                yaxis=dict(title="Score", gridcolor="rgba(255,255,255,0.05)"),
+                xaxis={"title": "Week", "gridcolor": "rgba(255,255,255,0.05)", "dtick": 1},
+                yaxis={"title": "Score", "gridcolor": "rgba(255,255,255,0.05)"},
             )
             st.plotly_chart(fig_student, use_container_width=True)
 
@@ -479,18 +640,18 @@ elif view_mode == "Student Explorer":
                 theta=list(activities.keys()),
                 fill="toself",
                 fillcolor="rgba(102,126,234,0.2)",
-                line=dict(color="#667eea", width=2),
+                line={"color": "#667eea", "width": 2},
             ))
             fig_radar.update_layout(
                 template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)",
                 height=300,
                 margin=dict(t=30, b=30, l=60, r=60),
-                polar=dict(
-                    bgcolor="rgba(0,0,0,0)",
-                    radialaxis=dict(gridcolor="rgba(255,255,255,0.1)"),
-                    angularaxis=dict(gridcolor="rgba(255,255,255,0.1)"),
-                ),
+                polar={
+                    "bgcolor": "rgba(0,0,0,0)",
+                    "radialaxis": {"gridcolor": "rgba(255,255,255,0.1)"},
+                    "angularaxis": {"gridcolor": "rgba(255,255,255,0.1)"},
+                },
             )
             st.plotly_chart(fig_radar, use_container_width=True)
 
@@ -541,11 +702,11 @@ elif view_mode == "Risk Analysis":
             showlegend=False,
             height=350,
             margin=dict(t=20, b=40, l=40, r=20),
-            xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-            yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
+            xaxis={"gridcolor": "rgba(255,255,255,0.05)"},
+            yaxis={"gridcolor": "rgba(255,255,255,0.05)"},
         )
         fig_risk.update_traces(
-            marker=dict(line=dict(width=0), opacity=0.9),
+            marker={"line": {"width": 0}, "opacity": 0.9},
             texttemplate="%{y}",
             textposition="outside",
         )
@@ -615,10 +776,10 @@ elif view_mode == "Risk Analysis":
     ]
 
     # Add alert status
-    alerted_ids = set(alerts["student_id"].tolist()) if not alerts.empty else set()
+    alerted_ids = set(alerts["student_id"].tolist()) if not alerts.empty else set()  # type: ignore
     display_df["Alert Status"] = display_df["Student ID"].apply(
         lambda x: "🚨 Active" if x in alerted_ids else "✅ Clear"
-    )
+    )  # type: ignore
 
     st.dataframe(
         display_df.sort_values("Engagement Score"),
@@ -634,17 +795,21 @@ elif view_mode == "AI Insights":
 
     st.markdown('<div class="section-header">🤖 AI-Powered Analysis</div>', unsafe_allow_html=True)
 
-    # Source indicator
-    if llm_result and llm_result.get("success"):
-        source = llm_result.get("source", "Unknown")
-        st.info(f"📡 Analysis Source: **{source}**")
+# ─── AI Insights Per Teacher ──────────────────────────────────────────
+    # Run insights on the teacher's students
+    with st.spinner("📠 Analyzing class engagement patterns..."):
+        teacher_llm_result = get_teacher_insights(summary)
+
+    if teacher_llm_result and teacher_llm_result.get("success"):
+        source = teacher_llm_result.get("source", "Unknown")
+        st.info(f"📡 AI Analysis Dashboard: **{source}** — Insights for Your Assigned Students")
 
         st.markdown(
-            f'<div class="analysis-box">{llm_result["analysis"]}</div>',
+            f'<div class="analysis-box">{teacher_llm_result["analysis"]}</div>',
             unsafe_allow_html=True,
         )
     else:
-        st.warning("⚠️ LLM analysis unavailable. Displaying ML-based analysis.")
+        st.warning("⚠️ AI Analysis Engine (Ollama) unavailable. Displaying Simulated AI Analysis.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 

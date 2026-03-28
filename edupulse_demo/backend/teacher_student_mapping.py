@@ -7,6 +7,8 @@ Each teacher is assigned a group of students they are responsible for.
 import random
 import json
 import os
+from typing import Optional, Union
+
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 NUM_TEACHERS = 10
@@ -47,7 +49,7 @@ def generate_mapping() -> dict:
     for i, teacher in enumerate(TEACHER_PROFILES):
         start_idx = i * students_per_teacher
         end_idx = start_idx + students_per_teacher
-        assigned_students = sorted(student_ids[start_idx:end_idx])
+        assigned_students = sorted(student_ids[start_idx:end_idx])  # type: ignore
         
         mapping[teacher["teacher_id"]] = {
             **teacher,
@@ -58,7 +60,7 @@ def generate_mapping() -> dict:
     return mapping
 
 
-def save_mapping(mapping: dict, output_path: str = None):
+def save_mapping(mapping: dict, output_path: Optional[str] = None):
     """Save the mapping to a JSON file."""
     if output_path is None:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -71,7 +73,7 @@ def save_mapping(mapping: dict, output_path: str = None):
     return output_path
 
 
-def load_mapping(filepath: str = None) -> dict:
+def load_mapping(filepath: Optional[str] = None) -> dict:
     """Load the mapping from JSON file, or generate if not exists."""
     if filepath is None:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -87,7 +89,7 @@ def load_mapping(filepath: str = None) -> dict:
         return json.load(f)
 
 
-def get_teacher_info(teacher_id: str, mapping: dict) -> dict:
+def get_teacher_info(teacher_id: str, mapping: dict) -> Optional[dict]:
     """Get teacher info and their assigned students."""
     teacher_id = teacher_id.upper()
     if teacher_id in mapping:

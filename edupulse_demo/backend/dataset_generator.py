@@ -5,8 +5,8 @@ with realistic engagement patterns across multiple weeks.
 """
 
 import os
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 NUM_STUDENTS = 200
@@ -104,7 +104,9 @@ def _generate_student_week(student_id: int, week: int, category: str) -> dict:
     }
 
 
-def generate_dataset(output_path: str = None) -> pd.DataFrame:
+from typing import Optional, Union
+
+def generate_dataset(output_path: Optional[str] = None) -> pd.DataFrame:
     """
     Generate complete synthetic student activity dataset.
     
@@ -129,8 +131,9 @@ def generate_dataset(output_path: str = None) -> pd.DataFrame:
     # Sort for readability
     df = df.sort_values(["student_id", "week_number"]).reset_index(drop=True)
 
-    if output_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    if isinstance(output_path, str):
+        target_dir = os.path.dirname(os.path.abspath(output_path))
+        os.makedirs(target_dir, exist_ok=True)
         df.to_csv(output_path, index=False)
         print(f"✅ Dataset generated: {len(df)} rows ({NUM_STUDENTS} students × {NUM_WEEKS} weeks)")
         print(f"   Saved to: {output_path}")

@@ -3,7 +3,7 @@ EduPulse – Alert System Module
 Generates and manages teacher alerts for at-risk students.
 """
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from datetime import datetime
 
 
@@ -85,8 +85,8 @@ def generate_alerts(summary_df: pd.DataFrame) -> pd.DataFrame:
 
     print(f"\n🚨 Alert System: Generated {len(alerts_df)} alerts")
     if not alerts_df.empty:
-        critical = (alerts_df["severity"] == "critical").sum()
-        warning = (alerts_df["severity"] == "warning").sum()
+        critical = (alerts_df["severity"] == "critical").sum()  # type: ignore
+        warning = (alerts_df["severity"] == "warning").sum()  # type: ignore
         print(f"   🔴 Critical: {critical}")
         print(f"   🟡 Warning: {warning}")
 
@@ -118,8 +118,8 @@ def get_alert_summary(alerts_df: pd.DataFrame) -> dict:
 
     return {
         "total_alerts": len(alerts_df),
-        "critical": int((alerts_df["severity"] == "critical").sum()),
-        "warning": int((alerts_df["severity"] == "warning").sum()),
+        "critical": int((alerts_df["severity"] == "critical").sum()),  # type: ignore
+        "warning": int((alerts_df["severity"] == "warning").sum()),  # type: ignore
         "top_alerts": alerts_df.head(5).to_dict("records"),
     }
 

@@ -7,17 +7,17 @@ Uses Selenium to demonstrate automated alert delivery.
 import os
 import time
 import json
-import pandas as pd
+import pandas as pd  # type: ignore
 from datetime import datetime
 
 try:
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
+    from selenium import webdriver  # type: ignore
+    from selenium.webdriver.common.by import By  # type: ignore
+    from selenium.webdriver.common.keys import Keys  # type: ignore
+    from selenium.webdriver.chrome.service import Service  # type: ignore
+    from selenium.webdriver.chrome.options import Options  # type: ignore
+    from selenium.webdriver.support.ui import WebDriverWait  # type: ignore
+    from selenium.webdriver.support import expected_conditions as EC  # type: ignore
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
@@ -335,10 +335,10 @@ def _save_alert_log(alerts: list):
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
-    from dataset_generator import generate_dataset
-    from feature_engineering import engineer_features, get_student_summary
-    from ml_models import run_ml_pipeline
-    from alert_system import generate_alerts
+    from dataset_generator import generate_dataset  # type: ignore
+    from feature_engineering import engineer_features, get_student_summary  # type: ignore
+    from ml_models import run_ml_pipeline  # type: ignore
+    from alert_system import generate_alerts  # type: ignore
 
     df = generate_dataset()
     df = engineer_features(df)
